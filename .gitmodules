@@ -1,0 +1,12 @@
+[submodule "base_models/models/lama/lama-repo"]
+	path = base_models/models/lama/lama-repo
+	url = https://github.com/advimman/lama
+[submodule "base_models/models/mat/MAT"]
+	path = base_models/models/mat/MAT
+	url = https://github.com/fenglinglwb/MAT
+[submodule "base_models/models/deepfill/DeepFillv2"]
+	path = base_models/models/deepfill/DeepFillv2
+	url = https://github.com/JiahuiYu/generative_inpainting
+[submodule "base_models/models/repaint/RePaint"]
+	path = base_models/models/repaint/RePaint
+	url = https://github.com/andreas128/RePaint

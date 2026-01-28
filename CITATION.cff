@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "muPIU-Net: Micro-CT Projection Infilling U-Net"
+version: 1.0.0
+date-released: 2026-01-28
+url: "https://github.com/UBC-Ford-lab/muPIU-Net-microCT-sinogram-infilling-network"
+repository-code: "https://github.com/UBC-Ford-lab/muPIU-Net-microCT-sinogram-infilling-network"
+license: MIT
+type: software
+authors:
+  - family-names: "Wiegmann"
+    given-names: "Falk"
+    affiliation: "University of British Columbia"
+keywords:
+  - computed tomography
+  - deep learning
+  - image reconstruction
+  - sinogram inpainting
+  - radiation dose reduction
+  - micro-CT
+abstract: >-
+  muPIU-Net is a deep learning framework for projection infilling in micro-CT imaging.
+  It enables undersampled CT scanning with reduced radiation dose by recovering
+  missing projections using deep neural networks. The framework includes a custom
+  U-Net architecture as well as adaptations of state-of-the-art image inpainting
+  models (LaMa, MAT, DeepFill v2, RePaint) for CT sinogram inpainting.
