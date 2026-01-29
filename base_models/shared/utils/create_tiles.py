@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """
-Create Tiled Dataset for RePaint Inference
-==========================================
+Create Tiled Dataset for Inpainting Model Inference
+====================================================
 This script takes the full-resolution sinogram dataset and creates 256×256 tiles
-for RePaint inpainting, with proper overlap for seamless merging.
+for inpainting models, with proper overlap for seamless merging.
+
+Shared by: RePaint, MAT, DeepFill
 
 Key features:
 - Splits 416×3504 sinograms into 256×256 tiles with 32-pixel overlap
-- Inverts masks (LaMa: 255=inpaint → RePaint: 0=inpaint)
+- Inverts masks (LaMa: 255=inpaint → inpainting models: 0=inpaint)
 - Preserves normalization metadata for later merging
 - Creates tiles for both GT and masked sinograms
 
@@ -28,31 +30,31 @@ from tqdm import tqdm
 
 # Script directory references
 SCRIPT_DIR = Path(__file__).parent
-MODEL_DIR = SCRIPT_DIR.parent  # models/repaint/
+SHARED_DIR = SCRIPT_DIR.parent  # shared/
 
 
 def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
-        description='Create 256×256 tiles from sinogram dataset for RePaint'
+        description='Create 256×256 tiles from sinogram dataset for inpainting models'
     )
     parser.add_argument(
         '--input_dir',
         type=str,
-        default='../../../shared/sinogram_dataset',
+        default='../sinogram_dataset',
         help='Input directory containing original sinograms'
     )
     parser.add_argument(
         '--output_dir',
         type=str,
-        default='../data/sinogram_tiles',
+        default='../sinogram_tiles',
         help='Output directory for tiled dataset'
     )
     parser.add_argument(
         '--tile_size',
         type=int,
         default=256,
-        help='Size of each tile (default: 256 for RePaint)'
+        help='Size of each tile (default: 256)'
     )
     parser.add_argument(
         '--overlap',
@@ -180,10 +182,10 @@ class TileCreator:
 
 def invert_mask(mask: np.ndarray) -> np.ndarray:
     """
-    Invert mask from LaMa format to RePaint format.
+    Invert mask from LaMa format to inpainting model format.
 
     LaMa: 255 = inpaint region, 0 = keep
-    RePaint: 0 = inpaint region, 255 = keep
+    Inpainting models: 0 = inpaint region, 255 = keep
 
     Args:
         mask: Input mask array
@@ -196,8 +198,8 @@ def invert_mask(mask: np.ndarray) -> np.ndarray:
 
 def normalize_for_repaint(image: np.ndarray, dtype=np.uint16) -> np.ndarray:
     """
-    Normalize image for RePaint (preserving uint16 precision).
-    RePaint dataloader will normalize to [-1, 1] float32.
+    Normalize image for inpainting models (preserving uint16 precision).
+    Model dataloaders will normalize to [-1, 1] float32.
 
     Args:
         image: Input image (any bit depth)
@@ -299,16 +301,16 @@ def main():
         mask_img = Image.open(mask_path)
         mask_array = np.array(mask_img)
 
-        # Normalize GT image to uint16 for RePaint
+        # Normalize GT image to uint16 for inpainting models
         gt_normalized = normalize_for_repaint(gt_array)
 
         # Create masked version by applying the mask
         # LaMa mask: 255 = inpaint region, 0 = keep
-        # Set masked regions to 0 (will be inpainted by RePaint)
+        # Set masked regions to 0 (will be inpainted by model)
         masked_normalized = gt_normalized.copy()
         masked_normalized[mask_array > 127] = 0  # Set inpaint regions to 0
 
-        # Invert mask for RePaint (0 = inpaint, 255 = keep)
+        # Invert mask for inpainting models (0 = inpaint, 255 = keep)
         mask_array_repaint = invert_mask(mask_array)
 
         # Extract tiles
@@ -366,11 +368,8 @@ def main():
     print(f"Estimated disk space: {estimated_gb:.2f} GB")
 
     print(f"\nNext steps:")
-    print(f"  1. cd repaint/RePaint")
-    print(f"  2. bash download.sh  # Download pre-trained models")
-    print(f"  3. python test.py --conf_path ../../configs/repaint_sinogram.yml")
-    print(f"  4. cd ../..")
-    print(f"  5. python merge_repaint_tiles.py")
+    print(f"  1. Run the inpainting model on the tiles")
+    print(f"  2. Merge results using the appropriate merge script")
 
 
 if __name__ == '__main__':

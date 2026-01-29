@@ -19,14 +19,19 @@ from pathlib import Path
 import shutil
 from tqdm import tqdm
 
+# Script-relative paths for consistent behavior regardless of working directory
+SCRIPT_DIR = Path(__file__).parent.resolve()
+MODEL_DIR = SCRIPT_DIR.parent  # base_models/models/lama/
+SHARED_DIR = MODEL_DIR.parent.parent / 'shared'  # base_models/shared/
+
 def parse_args():
     p = argparse.ArgumentParser(description="Run LaMa inference on sinograms")
     p.add_argument('--start', type=int, default=0, help='Start index (default: 0)')
     p.add_argument('--end', type=int, default=None, help='End index (default: all)')
     p.add_argument('--batch_size', type=int, default=100, help='Batch size for processing')
-    p.add_argument('--model_path', type=str, default='../lama-repo/big-lama', help='Path to LaMa model')
-    p.add_argument('--input_dir', type=str, default='../../../shared/sinogram_dataset', help='Input dataset directory')
-    p.add_argument('--output_dir', type=str, default='../data/sinograms_infilled', help='Output directory')
+    p.add_argument('--model_path', type=str, default=str(MODEL_DIR / 'lama-repo/big-lama'), help='Path to LaMa model')
+    p.add_argument('--input_dir', type=str, default=str(SHARED_DIR / 'sinogram_dataset'), help='Input dataset directory')
+    p.add_argument('--output_dir', type=str, default=str(MODEL_DIR / 'data/sinograms_infilled'), help='Output directory')
     p.add_argument('--skip_setup', action='store_true', help='Skip dependency check and model download')
     p.add_argument('--resume', action='store_true', default=True, help='Resume from where left off, skipping existing outputs (default: True)')
     p.add_argument('--no-resume', dest='resume', action='store_false', help='Process all sinograms, overwriting existing outputs')

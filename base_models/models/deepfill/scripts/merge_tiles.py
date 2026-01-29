@@ -47,8 +47,8 @@ def parse_args():
     parser.add_argument(
         '--metadata_path',
         type=str,
-        default='../../repaint/data/sinogram_tiles/tiling_metadata.json',
-        help='Path to tiling metadata JSON (reuses RePaint metadata)'
+        default='../../../shared/sinogram_tiles/tiling_metadata.json',
+        help='Path to tiling metadata JSON (shared by all models)'
     )
     parser.add_argument(
         '--output_dir',

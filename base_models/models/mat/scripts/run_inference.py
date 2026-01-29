@@ -68,7 +68,7 @@ def parse_args():
     parser.add_argument(
         '--mask_dir',
         type=str,
-        default='../../repaint/data/sinogram_tiles/masks',
+        default='../../../shared/sinogram_tiles/masks',
         help='Directory containing mask tiles (8-bit, RePaint format: 0=inpaint)'
     )
     parser.add_argument(
@@ -343,7 +343,7 @@ def main():
         print(f"Note: Using --gt_dir (deprecated, use --input_dir instead)")
     else:
         # Default to sinograms_masked (the proper input for inpainting)
-        input_dir = Path('repaint/sinogram_tiles/sinograms_masked')
+        input_dir = SCRIPT_DIR / '../../../shared/sinogram_tiles/sinograms_masked'
         print(f"Using default input directory: {input_dir}")
 
     mask_dir = Path(args.mask_dir)

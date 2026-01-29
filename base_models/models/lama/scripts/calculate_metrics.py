@@ -20,6 +20,7 @@ Author: Claude (Anthropic)
 Date: 2025-01-03
 """
 
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
@@ -40,8 +41,28 @@ from metric_calculators import mtf_calculator as MTF_calculator
 from metric_calculators import nps_calculator as NPS_calculator
 from metric_calculators import neq_calculator as NEQ_calculator
 
-# Output directory
-OUTPUT_DIR = SCRIPT_DIR.parent / 'metrics'
+# Default output directory
+DEFAULT_OUTPUT_DIR = SCRIPT_DIR.parent / 'metrics'
+
+
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description='Calculate MTF/NPS/NEQ metrics for LaMa reconstruction'
+    )
+    parser.add_argument('--gt_recon', type=str,
+                       default=str(CT_RECON_DIR / 'data/results/ground_truth_reconstruction.vff'),
+                       help='Ground truth reconstruction VFF file')
+    parser.add_argument('--model_recon', type=str,
+                       default=str(SCRIPT_DIR.parent / 'results/reconstructed_volume.vff'),
+                       help='Model reconstruction VFF file')
+    parser.add_argument('--unet_recon', type=str,
+                       default=str(CT_RECON_DIR / 'data/results/unet_reconstruction.vff'),
+                       help='U-Net reconstruction VFF file')
+    parser.add_argument('--output_dir', type=str,
+                       default=str(DEFAULT_OUTPUT_DIR),
+                       help='Output directory for metric results')
+    return parser.parse_args()
 
 
 def create_individual_plots(image_data, dataset_name, output_dir, pixel_size,
@@ -362,19 +383,22 @@ def print_summary(results, dataset_names):
 def main():
     """Main function to calculate all metrics for LaMa."""
 
+    args = parse_args()
+
     print("="*70)
     print("LaMa MTF/NPS/NEQ Metric Calculator")
     print("="*70)
 
-    # Ensure output directory exists
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    print(f"Output directory: {OUTPUT_DIR}")
+    # Set output directory from args
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    print(f"Output directory: {output_dir}")
 
-    # Define VFF files to compare
+    # Define VFF files to compare from args
     vff_files = [
-        CT_RECON_DIR / "data/results/Scan_1681_gt_recon.vff",
-        SCRIPT_DIR.parent / "results/reconstructed_volume.vff",
-        CT_RECON_DIR / "data/results/Scan_1681_with_pred_recon.vff"
+        Path(args.gt_recon),
+        Path(args.model_recon),
+        Path(args.unet_recon)
     ]
 
     dataset_names = [
@@ -446,7 +470,7 @@ def main():
             crop_indices_MTF.copy(),
             find_absolute_MTF=True,
             pixel_size=pixel_size,
-            target_directory=str(OUTPUT_DIR),
+            target_directory=str(output_dir),
             plot_results=False,
             edge_angle=edge_angle,
             high_to_low=True,
@@ -460,7 +484,7 @@ def main():
             image_data_nps,
             ROI_bounds_NPS.copy(),
             pixel_size=pixel_size,
-            target_directory=str(OUTPUT_DIR),
+            target_directory=str(output_dir),
             plot_results=False,
             filter_low_freq=False
         )
@@ -473,7 +497,7 @@ def main():
             crop_indices_MTF.copy(),
             ROI_bounds_NPS.copy(),
             pixel_size=pixel_size,
-            target_directory=str(OUTPUT_DIR),
+            target_directory=str(output_dir),
             plot_results=False,
             high_to_low_MTF=True
         )
@@ -498,7 +522,7 @@ def main():
     # Load LaMa data again for individual plots
     header, lama_data = vff.read_vff(str(vff_files[1]), verbose=False)
     create_individual_plots(
-        lama_data, "LaMa", OUTPUT_DIR, pixel_size,
+        lama_data, "LaMa", output_dir, pixel_size,
         mtf_slice_range, crop_indices_MTF, edge_angle,
         nps_slice_range, ROI_bounds_NPS
     )
@@ -508,13 +532,13 @@ def main():
     print("Creating comparison plots...")
     print("="*60)
 
-    create_comparison_plots(results, dataset_names, colors, OUTPUT_DIR, pixel_size)
-    create_unified_comparison_plot(results, dataset_names, colors, OUTPUT_DIR, pixel_size)
+    create_comparison_plots(results, dataset_names, colors, output_dir, pixel_size)
+    create_unified_comparison_plot(results, dataset_names, colors, output_dir, pixel_size)
 
     # Print summary
     print_summary(results, dataset_names)
 
-    print(f"\nAll metrics saved to: {OUTPUT_DIR}")
+    print(f"\nAll metrics saved to: {output_dir}")
     print("Done!")
 
 

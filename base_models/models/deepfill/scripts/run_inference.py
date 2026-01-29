@@ -48,7 +48,7 @@ def parse_args():
     parser.add_argument(
         '--tiles_dir',
         type=str,
-        default='../../repaint/data/sinogram_tiles',
+        default='../../../shared/sinogram_tiles',
         help='Directory containing prepared tiles'
     )
     parser.add_argument(

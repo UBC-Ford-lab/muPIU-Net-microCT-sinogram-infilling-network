@@ -112,3 +112,9 @@ base_models/models/*/data/
 base_models/models/*/metrics/
 base_models/shared/sinogram_dataset/
 base_models/shared/ground_truth/
+
+# Claude
+.claude
+
+# Citation (not yet confirmed)
+*.cff

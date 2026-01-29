@@ -93,13 +93,17 @@ def read_vff(filename, verbose=True):
 class VFFDataset:
     def __init__(self, folder: str, xml_file: str, save_headers: bool = False, tensor_projections: bool = False,
                  paths_str: str = "acq*", exclude_pred_paths: bool = False, projection_spacing = None,
-                 sub_scan='-00-'):
+                 sub_scan='-00-', index_stride: int = 1):
         self.folder = folder
         self.paths = sorted(Path(folder).glob(paths_str))
         if exclude_pred_paths is True:
             self.paths = [p for p in self.paths if not p.name.endswith("_pred.vff")]
 
         self.paths = [p for p in self.paths if sub_scan in str(p)]
+
+        # Apply stride filtering (take every Nth file)
+        if index_stride > 1:
+            self.paths = self.paths[::index_stride]
 
         with open(xml_file, 'r') as f:
             header = xmltodict.parse(f.read())

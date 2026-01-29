@@ -206,7 +206,7 @@ def load_infilled_sinograms(sinogram_folder, metadata, memmap_path, force_reload
 def reconstruct_from_deepfill_output(
     infilled_folder='../data/sinograms_infilled',
     metadata_path='../../../shared/sinogram_dataset/metadata.json',
-    tiling_metadata_path='../../repaint/data/sinogram_tiles/tiling_metadata.json',
+    tiling_metadata_path='../../../shared/sinogram_tiles/tiling_metadata.json',
     scan_folder=None,  # Must be provided - path to scan folder with scan.xml,
     output_folder='../results/reconstructed_volume',
     projection_spacing=None,
@@ -453,7 +453,7 @@ def main():
     parser.add_argument(
         '--tiling_metadata_path',
         type=str,
-        default='../../repaint/data/sinogram_tiles/tiling_metadata.json',
+        default='../../../shared/sinogram_tiles/tiling_metadata.json',
         help='Path to tiling metadata file'
     )
     parser.add_argument(

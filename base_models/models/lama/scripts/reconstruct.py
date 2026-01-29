@@ -29,6 +29,11 @@ from pathlib import Path
 import cv2
 from tqdm import tqdm
 
+# Path constants for script-relative defaults
+SCRIPT_DIR = Path(__file__).parent.resolve()
+MODEL_DIR = SCRIPT_DIR.parent  # base_models/models/lama/
+SHARED_DIR = MODEL_DIR.parent.parent / 'shared'  # base_models/shared/
+
 # Add ct_recon directory to path for imports (5 levels up from scripts/)
 CT_RECON_DIR = Path(__file__).parent.parent.parent.parent.parent
 sys.path.append(str(CT_RECON_DIR))
@@ -199,7 +204,7 @@ def load_infilled_sinograms(sinogram_folder, metadata, memmap_path, force_reload
 
 
 def reconstruct_from_lama_output(
-    infilled_folder='../lama-repo/sinograms_infilled',
+    infilled_folder='../data/sinograms_infilled',
     metadata_path='../../../shared/sinogram_dataset/metadata.json',
     scan_folder=None,  # Must be provided - path to scan folder with scan.xml
     output_folder='../results/reconstructed_volume',
@@ -442,12 +447,12 @@ def main():
         '--scan_folder',
         type=str,
         required=True,
-        help='Path to scan folder containing original projections (for geometry/angles)'
+        help='Path to scan folder containing scan.xml (e.g., data/scans/Scan_1681)'
     )
     parser.add_argument(
         '--metadata_path',
         type=str,
-        default='../../../shared/sinogram_dataset/metadata.json',
+        default=str(SHARED_DIR / 'sinogram_dataset/metadata.json'),
         help='Path to dataset metadata file'
     )
     parser.add_argument(
@@ -461,8 +466,8 @@ def main():
     # Use paths relative to script location
     script_dir = Path(__file__).parent
     model_dir = script_dir.parent  # models/lama/
+    metadata_path = Path(args.metadata_path)
     scan_folder = Path(args.scan_folder)
-    metadata_path = script_dir / args.metadata_path
 
     # Reconstruct GT if requested
     if args.mode in ['gt', 'both']:
@@ -484,7 +489,7 @@ def main():
         print("RECONSTRUCTING LAMA INFILLED")
         print("="*80)
         reconstruct_from_lama_output(
-            infilled_folder=model_dir / 'lama-repo/sinograms_infilled',
+            infilled_folder=model_dir / 'data/sinograms_infilled',
             metadata_path=metadata_path,
             scan_folder=scan_folder,
             output_folder=model_dir / 'results/reconstructed_volume',

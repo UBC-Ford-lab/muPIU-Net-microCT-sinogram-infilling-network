@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A deep learning framework for **projection infilling** in micro-CT imaging - recovering missing CT projections to enable undersampled scanning with reduced radiation dose.
+A deep learning framework for projection infilling in micro-CT imaging - recovering missing CT projections to enable undersampled scanning with reduced radiation dose.
 
 ## Overview
 
@@ -23,11 +23,10 @@ muPIU-Net/
 │   ├── field_correction.py     # Bright/dark field correction
 │   └── paths.py                # Centralized path configuration
 │
-├── unet_pipeline/              # U-Net training and inference
+├── unet_pipeline/              # U-Net inference pipeline
 │   ├── model.py                # U-Net architecture
-│   ├── train.py                # Training script
 │   ├── infer.py                # Inference script
-│   └── hpc/                    # SLURM job scripts
+│   └── run_all.py              # Full reconstruction pipeline
 │
 ├── reconstruction/             # FDK reconstruction
 │   └── fdk.py                  # GPU-accelerated FDK
@@ -77,76 +76,234 @@ python -c "from ct_core import vff_io"
 ```
 
 ## Usage
-
-### U-Net Training
-
-```bash
-# Create data split
-python unet_pipeline/create_data_split.py \
-    --train_test_split=0.9 \
-    --desired_scans_in_testing=['Scan_1680','Scan_1681'] \
-    --number_of_scans_in_total=80
-
-# Train model
-python unet_pipeline/train.py --epochs=75 --batch_size=3
-```
-
 ### U-Net Inference
 
-```bash
-# Generate predictions for missing projections
-python unet_pipeline/infer.py
+Generate predictions for missing projections (every 2nd projection):
 
-# Run FDK reconstruction
+```bash
+python unet_pipeline/infer.py \
+    --scan_folder /path/to/scan \
+    --checkpoint data/models/mupiu-net_final_model.pth \
+    --output_dir data/results/unet_output
+# Output: Complete projection set with predicted projections
+
+# Run FDK reconstruction on infilled projections
 python reconstruction/fdk.py
 ```
 
-### Base Model Comparison
+**Input:** Folder containing VFF projection files (same format as base models)
+**Output:** Complete projection set with originals + predicted projections (`*_pred.vff`)
 
-Each base model follows the same workflow:
+### Reconstruction
+
+Run FDK reconstructions to compare ground truth, undersampled, and U-Net infilled projections:
 
 ```bash
-cd base_models/models/lama  # or mat, deepfill, repaint
+python unet_pipeline/run_all.py \
+    --scan_folder /path/to/scan \
+    --unet_folder data/results/unet_output \
+    --mode all
+```
 
-# Run inference
-python scripts/run_inference.py
+**CLI Arguments:**
 
-# Reconstruct volume
-python scripts/reconstruct.py --scan_folder /path/to/scan
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `--scan_folder` | Yes | Original scan folder with all projections, bright/dark fields, and `scan.xml` |
+| `--unet_folder` | Only for `unet` mode | Output folder from `infer.py` containing U-Net predictions |
+| `--output_dir` | No | Base output directory (default: `data/results`) |
+| `--mode` | No | Reconstruction mode: `gt`, `under`, `unet`, or `all` (default: `all`) |
 
-# Calculate domain comparison metrics
-python scripts/domain_comparison.py --gt_volume /path/to/gt.vff
+**Reconstruction Modes:**
+
+| Mode | Description |
+|------|-------------|
+| `gt` | Ground truth reconstruction using all projections |
+| `under` | Undersampled reconstruction using every 2nd projection |
+| `unet` | Reconstruction using U-Net infilled projections |
+| `all` | Run all three reconstructions sequentially |
+
+**Examples:**
+
+```bash
+# Run all reconstructions
+python unet_pipeline/run_all.py \
+    --scan_folder /path/to/scan \
+    --unet_folder data/results/unet_output
+
+# Run only ground truth reconstruction
+python unet_pipeline/run_all.py \
+    --scan_folder /path/to/scan \
+    --mode gt
+
+# Run only U-Net reconstruction (requires unet_folder)
+python unet_pipeline/run_all.py \
+    --scan_folder /path/to/scan \
+    --unet_folder data/results/unet_output \
+    --mode unet
+```
+
+ **Output:** Reconstructions are saved to `data/results/` as:                                                                          
+ - `{scan_name}_gt_recon.vff` - Ground truth                                                                                           
+ - `{scan_name}_under_recon.vff` - Undersampled                                                                                        
+ - `{scan_name}_unet_recon.vff` - U-Net infilled 
+
+### Base Model Comparison
+
+All base models require creating a sinogram dataset from .vff scan files first.
+
+**Input Data:** Place your scan folder containing VFF files anywhere on your system. You'll pass the path via `--scan_folder`. The folder should contain:
+- `Projections.vff` - Raw projection data
+- `BrightField.vff` - Bright field calibration
+- `DarkField.vff` - Dark field calibration
+- `scan.xml` - Detector data
+
+```bash
+# Step 0: Create sinogram dataset from .vff files (required for all models)
+python base_models/shared/utils/create_sinogram_dataset.py \
+    --scan_folder /path/to/scan \
+    --output_dir base_models/shared/sinogram_dataset
+# Output: base_models/shared/sinogram_dataset/
+#         ├── sinograms_lama/    (masked sinograms for LaMa)
+#         ├── sinograms_gt/      (ground truth sinograms)
+#         ├── masks/             (binary masks)
+#         └── metadata.json      (scan geometry info)
+```
+
+#### LaMa (Full Resolution - No Tiling)
+
+LaMa processes full-resolution sinograms (410×3500) directly without tiling:
+
+```bash
+# 1. Run LaMa inference
+python base_models/models/lama/scripts/run_inference.py
+# Output: base_models/models/lama/data/sinograms_infilled/
+#         └── sino_XXXX_mask001.png (infilled sinograms)
+
+# 2. Reconstruct
+python base_models/models/lama/scripts/reconstruct.py \
+    --scan_folder /path/to/scan
+# Output: base_models/models/lama/results/reconstructed_volume/
+#         └── volume.vff (reconstructed CT volume)
+```
+
+#### MAT, DeepFill, RePaint (Tiled Workflow)
+
+These models use 256×256 tiles and require an additional tiling step:
+
+```bash
+# 1. Create tiles from sinogram dataset
+python base_models/shared/utils/create_tiles.py \
+    --input_dir base_models/shared/sinogram_dataset \
+    --output_dir base_models/shared/sinogram_tiles
+# Output: base_models/shared/sinogram_tiles/
+#         ├── sinograms_gt/         (256x256 GT tiles for reference)
+#         ├── sinograms_masked/     (256x256 masked tiles - model input)
+#         ├── masks/                (256x256 mask tiles)
+#         └── tiling_metadata.json  (metadata for tile merging)
+```
+
+**MAT:**
+```bash
+python base_models/models/mat/scripts/run_inference.py
+# Output: base_models/models/mat/data/tiles_infilled/
+
+python base_models/models/mat/scripts/merge_tiles.py
+# Output: base_models/models/mat/data/sinograms_infilled/
+
+python base_models/models/mat/scripts/reconstruct.py --scan_folder /path/to/scan
+# Output: base_models/models/mat/results/reconstructed_volume/
+```
+
+**DeepFill:**
+```bash
+python base_models/models/deepfill/scripts/run_inference.py
+# Output: base_models/models/deepfill/data/tiles_infilled/
+
+python base_models/models/deepfill/scripts/merge_tiles.py
+# Output: base_models/models/deepfill/data/sinograms_infilled/
+
+python base_models/models/deepfill/scripts/reconstruct.py --scan_folder /path/to/scan
+# Output: base_models/models/deepfill/results/reconstructed_volume/
+```
+
+**RePaint:**
+```bash
+cd base_models/models/repaint/RePaint
+python ../scripts/run_inference.py --conf_path ../configs/ct_sinogram.yml
+# Output: base_models/models/repaint/data/tiles_infilled/
+
+python base_models/models/repaint/scripts/merge_tiles.py
+# Output: base_models/models/repaint/data/sinograms_infilled/
+
+python base_models/models/repaint/scripts/reconstruct.py --scan_folder /path/to/scan
+# Output: base_models/models/repaint/results/reconstructed_volume/
 ```
 
 ### Metric Calculation
 
+Calculate MTF, NPS, and NEQ metrics for each model's reconstruction:
+
 ```bash
-cd metric_calculators
+# DeepFill v2
+python base_models/models/deepfill/scripts/calculate_metrics.py \
+  --gt_recon data/results/ground_truth_reconstruction.vff \
+  --unet_recon data/results/unet_reconstruction.vff
+# Output: base_models/models/deepfill/metrics/
 
-# Individual metrics
-python mtf_calculator.py
-python nps_calculator.py
-python neq_calculator.py
-
-# Or all at once
-python all_metrics_calculator.py
+# RePaint (similar for mat, lama)
+python base_models/models/repaint/scripts/calculate_metrics.py \
+  --gt_recon data/results/ground_truth_reconstruction.vff \
+  --unet_recon data/results/unet_reconstruction.vff
+# Output: base_models/models/repaint/metrics/
 ```
 
-## Data Format
+### Comparison Plots
 
-The primary data format is **VFF (Volume File Format)**:
-- ASCII header + binary big-endian data
-- Arrays in (z, y, x) ordering
-- See [DATA_PREPARATION.md](DATA_PREPARATION.md) for details
+Generate comparison figures across all models:
+
+**MTF/NPS/NEQ Comparison:**
+```bash
+python metric_calculators/helper_scripts/all_models_comparison_plot.py \
+    --scan_name Scan_1681 \
+    --results_dir data/results \
+    --output_dir ./figures
+# Output: all_models_MTF_NPS_NEQ_comparison.{png,pdf,eps}
+```
+
+**Visual Slice Comparison:**
+```bash
+python metric_calculators/helper_scripts/plot_reconstruction_comparison.py \
+    --scan_name Scan_1681 \
+    --slice_idx 150 \
+    --output_dir ./figures
+# Output: all_models_reconstruction_comparison.{png,pdf,eps}
+#         all_models_reconstruction_comparison_with_labels.{png,pdf,eps}
+```
+
+**CLI Arguments (both scripts):**
+
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `--scan_name` | `Scan_1681` | Scan name prefix for reconstruction files |
+| `--results_dir` | `data/results` | Directory containing GT/Under/U-Net reconstructions |
+| `--output_dir` | Script location | Output directory for figures |
+| `--slice_idx` | `150` | (plot_reconstruction only) Slice index to display |
+
+**Required Input Files:**
+- `data/results/{scan_name}_gt_recon.vff` - Ground truth reconstruction
+- `data/results/{scan_name}_under_recon.vff` - Undersampled reconstruction
+- `data/results/{scan_name}_unet_recon.vff` - U-Net reconstruction
+- `base_models/models/{lama,mat,deepfill,repaint}/results/reconstructed_volume.vff` - Base model reconstructions
 
 ## Citation
 
 If you use this code in your research, please cite:
 
 ```bibtex
-@article{wiegmann2026mupiunet,
-  title={muPIU-Net: Deep Learning for Micro-CT Projection Infilling},
-  author={Wiegmann, Falk and others},
+@article{2026mupiunet,
+  title={TBD},
+  author={TBD},
   journal={TBD},
   year={2026}
 }
@@ -160,7 +317,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-This work was conducted at the UBC Ford Lab. We thank the developers of the following open-source projects:
+This work was conducted at the UBC Ford Lab and is supported by a grant from the BC Lung Foundation. We thank the developers of the following open-source projects:
 
 - [LaMa](https://github.com/advimman/lama) - Large Mask Inpainting
 - [MAT](https://github.com/fenglinglwb/MAT) - Mask-Aware Transformer

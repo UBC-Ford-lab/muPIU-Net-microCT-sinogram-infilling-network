@@ -37,58 +37,6 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### 4. Verify Installation
-
-```bash
-python -c "from ct_core import vff_io; print('ct_core OK')"
-python -c "import torch; print(f'PyTorch {torch.__version__}, CUDA: {torch.cuda.is_available()}')"
-```
-
-## HPC Installation (Compute Canada / SLURM)
-
-### 1. Load Required Modules
-
-```bash
-module load python/3.10 cuda/11.8 cudnn/8.6 scipy-stack
-```
-
-### 2. Create Virtual Environment
-
-```bash
-virtualenv --no-download ~/Python_virtual_env
-source ~/Python_virtual_env/bin/activate
-pip install --no-index --upgrade pip
-```
-
-### 3. Install PyTorch
-
-```bash
-pip install --no-index torch torchvision
-```
-
-### 4. Install Other Dependencies
-
-```bash
-pip install --no-index numpy scipy scikit-image pillow matplotlib tqdm
-pip install xmltodict opencv-python wandb
-```
-
-### 5. Set Environment Variable
-
-Add to your `.bashrc`:
-
-```bash
-export VENV_PATH="$HOME/Python_virtual_env"
-```
-
-### 6. Verify GPU Access
-
-```bash
-salloc --gres=gpu:1 --time=0:10:00 --mem=8G
-python -c "import torch; print(torch.cuda.get_device_name(0))"
-exit
-```
-
 ## Base Model Setup
 
 Each base model requires additional setup:
@@ -112,9 +60,10 @@ pip install -r requirements.txt
 ```bash
 cd base_models/models/mat/MAT
 
-# Download checkpoint (via gdown)
+# Create pretrained directory and download checkpoint
+mkdir -p pretrained
 pip install gdown
-gdown https://drive.google.com/uc?id=1M3AFy7x9DqXaI-fINSynW7FJSXYROfv-
+gdown https://drive.google.com/uc?id=1M3AFy7x9DqXaI-fINSynW7FJSXYROfv- -O pretrained/CelebA-HQ_256.pkl
 ```
 
 ### DeepFill v2
@@ -122,8 +71,9 @@ gdown https://drive.google.com/uc?id=1M3AFy7x9DqXaI-fINSynW7FJSXYROfv-
 ```bash
 cd base_models/models/deepfill/DeepFillv2
 
-# Download model checkpoint
-gdown https://drive.google.com/uc?id=1dyPD2hx0JTmMuHHS8s4LDkkF4vMpBV9E
+# Create pretrained directory and download checkpoint
+mkdir -p pretrained
+gdown https://drive.google.com/uc?id=1dyPD2hx0JTmMuHHS8s4LDkkF4vMpBV9E -O pretrained/states_tf_celebahq.pth
 ```
 
 ### RePaint
@@ -131,35 +81,7 @@ gdown https://drive.google.com/uc?id=1dyPD2hx0JTmMuHHS8s4LDkkF4vMpBV9E
 ```bash
 cd base_models/models/repaint/RePaint
 
-# Download pre-trained diffusion model
-gdown https://drive.google.com/uc?id=1norNWWGYP3EZ_o05DmoW1ryKuKMmhlCX
+# Create pretrained directory and download checkpoint
 mkdir -p data/pretrained
-mv celeba256_250000.pt data/pretrained/
-```
-
-## Troubleshooting
-
-### CUDA Out of Memory
-
-Reduce batch size in training scripts or use smaller tile sizes for base models.
-
-### Import Errors
-
-Ensure the project root is in your Python path:
-
-```python
-import sys
-sys.path.insert(0, '/path/to/muPIU-Net-microCT-sinogram-infilling-network')
-```
-
-### VFF File Loading Issues
-
-VFF files use big-endian byte order. Ensure byteswap is applied on little-endian systems (handled automatically by `ct_core.vff_io`).
-
-### Submodule Issues
-
-If submodules are empty:
-
-```bash
-git submodule update --init --recursive --force
+gdown https://drive.google.com/uc?id=1norNWWGYP3EZ_o05DmoW1ryKuKMmhlCX -O data/pretrained/celeba256_250000.pt
 ```
