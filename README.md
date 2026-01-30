@@ -13,6 +13,8 @@ This repository contains the code for our paper on CT sinogram infilling using d
 
 Both approaches use FDK reconstruction for fair comparison, followed by quantitative image quality metrics (MTF, NPS, NEQ).
 
+![Workflow Diagram](data/workflow_diagram.png)
+
 ## Repository Structure
 
 ```
