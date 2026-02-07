@@ -1,6 +1,7 @@
 # muPIU-Net: Micro-CT Projection Infilling U-Net
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18519787.svg)](https://doi.org/10.5281/zenodo.18519787)
 
 A deep learning framework for projection infilling in micro-CT imaging - recovering missing CT projections to enable undersampled scanning with reduced radiation dose.
 
@@ -14,6 +15,14 @@ This repository contains the code for our paper on CT sinogram infilling using d
 Both approaches use FDK reconstruction for fair comparison, followed by quantitative image quality metrics (MTF, NPS, NEQ).
 
 ![Workflow Diagram](data/workflow_diagram.png)
+
+## Data & Trained Model Weights
+
+The trained muPIU-Net model weights and the evaluation dataset (mCTP 610 phantom) are publicly available on Zenodo:
+
+**[https://zenodo.org/records/18519787](https://zenodo.org/records/18519787)** (DOI: [10.5281/zenodo.18519787](https://doi.org/10.5281/zenodo.18519787))
+
+Download and place the model checkpoint into `data/models/` for inference.
 
 ## Repository Structure
 
