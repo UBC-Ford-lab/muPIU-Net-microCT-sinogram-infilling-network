@@ -40,12 +40,15 @@ muPIU-Net/
 │
 ├── unet_pipeline/              # U-Net inference pipeline
 │   ├── model.py                # U-Net architecture
-│   └── infer.py                # Inference script
+│   ├── infer.py                # Inference script
+│   └── domain_comparison.py    # Multi-domain evaluation (SSIM/PSNR)
 │
-├── metric_calculators/         # Image quality metrics
+├── metric_calculators/         # Image quality metrics (git submodule)
 │   ├── mtf_calculator.py       # Modulation Transfer Function
 │   ├── nps_calculator.py       # Noise Power Spectrum
 │   ├── neq_calculator.py       # Noise Equivalent Quanta
+│   ├── ttf_calculator.py       # Task Transfer Function
+│   ├── d_prime_calculator.py   # Detectability Index (d')
 │   └── helper_scripts/         # Comparison plotting
 │
 ├── base_models/                # Base model comparison framework
@@ -55,7 +58,9 @@ muPIU-Net/
 │   │   ├── deepfill/           # DeepFill v2
 │   │   └── repaint/            # RePaint (Diffusion-based)
 │   └── shared/
-│       └── utils/              # Shared utilities
+│       └── utils/
+│           ├── create_sinogram_dataset.py  # VFF → 2D sinograms
+│           └── create_tiles.py             # Sinograms → 256×256 tiles
 │
 └── data/                       # Data directories (not tracked)
     ├── scans/                  # Raw projection data
@@ -70,7 +75,7 @@ See [INSTALLATION.md](INSTALLATION.md) for detailed setup instructions.
 ### Quick Start
 
 ```bash
-# Clone with submodules (includes reconstruction package)
+# Clone with submodules (includes reconstruction and metric_calculators packages)
 git clone --recursive https://github.com/UBC-Ford-lab/muPIU-Net-microCT-sinogram-infilling-network.git
 cd muPIU-Net-microCT-sinogram-infilling-network
 
@@ -86,91 +91,59 @@ source venv/bin/activate  # Linux/Mac
 pip install -r requirements.txt
 
 # Verify installation
-python -c "from reconstruction.ct_core import vff_io"
+python -c "from reconstruction.ct_core import vff_io; from metric_calculators import mtf_calculator; print('OK')"
 ```
 
 ## Usage
-### U-Net Inference
 
-Generate predictions for missing projections (every 2nd projection):
+### Input Data
+
+Each scan folder should contain:
+- `acq-XX-XXXX.vff` — Individual projection files (one per angle)
+- `bright.vff` — Bright field calibration
+- `dark.vff` — Dark field calibration
+- `scan.xml` — Scanner geometry (source/detector positions, spacing)
+
+### U-Net Infilling + Reconstruction
+
+**Step 1 — Run U-Net inference** to predict missing projections:
 
 ```bash
 python unet_pipeline/infer.py \
-    --scan_folder /path/to/scan \
-    --checkpoint data/models/mupiu-net_final_model.pth \
-    --output_dir data/results/unet_output
-# Output: Complete projection set with predicted projections
-
-# Run FDK reconstruction on infilled projections
-python reconstruction/fdk.py
+    --scan_folder data/scans/Scan_1681 \
+    --outdir data/results
 ```
 
-**Input:** Folder containing VFF projection files (same format as base models)
-**Output:** Complete projection set with originals + predicted projections (`*_pred.vff`)
+This produces two output folders:
+- `data/results/Scan_1681_with_pred/` — originals + predicted projections (for infilled reconstruction)
+- `data/results/Scan_1681_no_pred/` — originals only (for undersampled baseline reconstruction)
 
-### Reconstruction
+Two inference modes are available via `--mode`:
+- `interleave` (default) — predicts between every consecutive pair, doubling the projection count
+- `subsample` — treats odd-indexed projections as missing and predicts them from even neighbors
 
-Run FDK reconstructions to compare ground truth, undersampled, and U-Net infilled projections:
+**Step 2 — Reconstruct** each projection set with FDK:
 
 ```bash
-python unet_pipeline/run_all.py \
-    --scan_folder /path/to/scan \
-    --unet_folder data/results/unet_output \
-    --mode all
+# Ground truth (all original projections)
+python -m reconstruction.run_recon_on_vff_file data/scans/Scan_1681
+
+# U-Net infilled projections
+python -m reconstruction.run_recon_on_vff_file data/results/Scan_1681_with_pred
+
+# Undersampled baseline (originals only, no infilling)
+python -m reconstruction.run_recon_on_vff_file data/results/Scan_1681_no_pred
 ```
 
-**CLI Arguments:**
+The reconstructor auto-detects the original scan folder (for calibration fields) from the `Scan_XXXX` naming convention. Override with `--scan-folder` if needed.
 
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `--scan_folder` | Yes | Original scan folder with all projections, bright/dark fields, and `scan.xml` |
-| `--unet_folder` | Only for `unet` mode | Output folder from `infer.py` containing U-Net predictions |
-| `--output_dir` | No | Base output directory (default: `data/results`) |
-| `--mode` | No | Reconstruction mode: `gt`, `under`, `unet`, or `all` (default: `all`) |
+**Output:** Calibrated HU volumes saved alongside the input folder as `{folder}_recon_calibrated.vff`.
 
-**Reconstruction Modes:**
-
-| Mode | Description |
-|------|-------------|
-| `gt` | Ground truth reconstruction using all projections |
-| `under` | Undersampled reconstruction using every 2nd projection |
-| `unet` | Reconstruction using U-Net infilled projections |
-| `all` | Run all three reconstructions sequentially |
-
-**Examples:**
-
-```bash
-# Run all reconstructions
-python unet_pipeline/run_all.py \
-    --scan_folder /path/to/scan \
-    --unet_folder data/results/unet_output
-
-# Run only ground truth reconstruction
-python unet_pipeline/run_all.py \
-    --scan_folder /path/to/scan \
-    --mode gt
-
-# Run only U-Net reconstruction (requires unet_folder)
-python unet_pipeline/run_all.py \
-    --scan_folder /path/to/scan \
-    --unet_folder data/results/unet_output \
-    --mode unet
-```
-
- **Output:** Reconstructions are saved to `data/results/` as:                                                                          
- - `{scan_name}_gt_recon.vff` - Ground truth                                                                                           
- - `{scan_name}_under_recon.vff` - Undersampled                                                                                        
- - `{scan_name}_unet_recon.vff` - U-Net infilled 
+See `python -m reconstruction.run_recon_on_vff_file --help` for additional options (filter type, voxel size, FOV).
 
 ### Base Model Comparison
 
-All base models require creating a sinogram dataset from .vff scan files first.
-
-**Input Data:** Place your scan folder containing VFF files anywhere on your system. You'll pass the path via `--scan_folder`. The folder should contain:
-- `Projections.vff` - Raw projection data
-- `BrightField.vff` - Bright field calibration
-- `DarkField.vff` - Dark field calibration
-- `scan.xml` - Detector data
+All base models require creating a sinogram dataset from the scan folder first.
 
 ```bash
 # Step 0: Create sinogram dataset from .vff files (required for all models)
@@ -256,59 +229,27 @@ python base_models/models/repaint/scripts/reconstruct.py --scan_folder /path/to/
 
 ### Metric Calculation
 
-Calculate MTF, NPS, and NEQ metrics for each model's reconstruction:
+The `metric_calculators/` submodule provides CLI tools and a Python API for computing image quality metrics (MTF, NPS, NEQ, TTF, d') on reconstructed volumes. See the [metric_calculators README](metric_calculators/README.md) for full documentation.
+
+**Per-model metrics** (run from each base model's scripts directory):
 
 ```bash
-# DeepFill v2
 python base_models/models/deepfill/scripts/calculate_metrics.py \
   --gt_recon data/results/ground_truth_reconstruction.vff \
   --unet_recon data/results/unet_reconstruction.vff
-# Output: base_models/models/deepfill/metrics/
-
-# RePaint (similar for mat, lama)
-python base_models/models/repaint/scripts/calculate_metrics.py \
-  --gt_recon data/results/ground_truth_reconstruction.vff \
-  --unet_recon data/results/unet_reconstruction.vff
-# Output: base_models/models/repaint/metrics/
 ```
 
-### Comparison Plots
+**Cross-model comparison plots:**
 
-Generate comparison figures across all models:
-
-**MTF/NPS/NEQ Comparison:**
 ```bash
-python metric_calculators/helper_scripts/all_models_comparison_plot.py \
-    --scan_name Scan_1681 \
-    --results_dir data/results \
-    --output_dir ./figures
-# Output: all_models_MTF_NPS_NEQ_comparison.{png,pdf,eps}
+# MTF/NPS/NEQ comparison across all models
+python -m metric_calculators.helper_scripts.all_models_comparison_plot \
+    --scan_name Scan_1681 --output_dir ./figures
+
+# Visual slice comparison
+python -m metric_calculators.helper_scripts.plot_reconstruction_comparison \
+    --scan_name Scan_1681 --slice_idx 150 --output_dir ./figures
 ```
-
-**Visual Slice Comparison:**
-```bash
-python metric_calculators/helper_scripts/plot_reconstruction_comparison.py \
-    --scan_name Scan_1681 \
-    --slice_idx 150 \
-    --output_dir ./figures
-# Output: all_models_reconstruction_comparison.{png,pdf,eps}
-#         all_models_reconstruction_comparison_with_labels.{png,pdf,eps}
-```
-
-**CLI Arguments (both scripts):**
-
-| Argument | Default | Description |
-|----------|---------|-------------|
-| `--scan_name` | `Scan_1681` | Scan name prefix for reconstruction files |
-| `--results_dir` | `data/results` | Directory containing GT/Under/U-Net reconstructions |
-| `--output_dir` | Script location | Output directory for figures |
-| `--slice_idx` | `150` | (plot_reconstruction only) Slice index to display |
-
-**Required Input Files:**
-- `data/results/{scan_name}_gt_recon.vff` - Ground truth reconstruction
-- `data/results/{scan_name}_under_recon.vff` - Undersampled reconstruction
-- `data/results/{scan_name}_unet_recon.vff` - U-Net reconstruction
-- `base_models/models/{lama,mat,deepfill,repaint}/results/reconstructed_volume.vff` - Base model reconstructions
 
 ## Citation
 
