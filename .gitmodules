@@ -13,3 +13,6 @@
 [submodule "reconstruction"]
 	path = reconstruction
 	url = https://github.com/UBC-Ford-lab/eXplore_CT_120_fdk_reconstruction_algorithm.git
+[submodule "metric_calculators"]
+	path = metric_calculators
+	url = https://github.com/UBC-Ford-lab/micro_ct_image_metric_analysis.git
