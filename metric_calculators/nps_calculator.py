@@ -157,7 +157,7 @@ def get_NPS(image_data, ROI_bounds, pixel_size, target_directory=os.getcwd(), pl
 if __name__ == '__main__':
     # Load the image data
     sys.path.insert(1, os.path.join(sys.path[0], '..'))
-    from ct_core import vff_io as vff
+    from reconstruction.ct_core import vff_io as vff
     image_data = vff.read_vff("data/results/repaint_reconstruction.vff", verbose=False)[1]
 
     #select only the slices which contain the homogeneous part of the phantom

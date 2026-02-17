@@ -113,6 +113,8 @@ base_models/models/*/metrics/
 base_models/shared/sinogram_dataset/
 base_models/shared/ground_truth/
 
+temp_fdk_recon_analysis/
+
 # Claude
 .claude
 

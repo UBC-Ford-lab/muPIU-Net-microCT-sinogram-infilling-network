@@ -28,9 +28,9 @@ except ImportError:
     def tqdm(iterable, desc=None, total=None):
         return iterable
 
-# Import from ct_core package
-from ct_core import vff_io
-print("Using ct_core.vff_io.read_vff()")
+# Import from reconstruction.ct_core package
+from reconstruction.ct_core import vff_io
+print("Using reconstruction.ct_core.vff_io.read_vff()")
 #endregion
 
 def parse_args():

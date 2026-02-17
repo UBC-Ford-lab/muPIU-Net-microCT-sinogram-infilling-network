@@ -36,7 +36,7 @@ sys.path.insert(0, str(CT_RECON_DIR))
 sys.path.insert(0, str(METRIC_CALC_DIR))
 sys.path.insert(0, str(METRIC_CALC_DIR / 'helper_scripts'))
 
-from ct_core import vff_io as vff
+from reconstruction.ct_core import vff_io as vff
 from metric_calculators import mtf_calculator as MTF_calculator
 from metric_calculators import nps_calculator as NPS_calculator
 from metric_calculators import neq_calculator as NEQ_calculator

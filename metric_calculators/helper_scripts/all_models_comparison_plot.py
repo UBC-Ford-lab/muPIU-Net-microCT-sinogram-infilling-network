@@ -28,7 +28,7 @@ from pathlib import Path
 
 # Add parent directories to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
-from ct_core import vff_io as vff
+from reconstruction.ct_core import vff_io as vff
 from metric_calculators import mtf_calculator as MTF_calculator
 from metric_calculators import nps_calculator as NPS_calculator
 from metric_calculators import neq_calculator as NEQ_calculator

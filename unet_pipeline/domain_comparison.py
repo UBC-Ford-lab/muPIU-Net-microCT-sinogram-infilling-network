@@ -22,7 +22,7 @@ from tqdm import tqdm
 from torch.utils.data import Dataset, DataLoader
 import matplotlib.pyplot as plt
 
-from ct_core import vff_io
+from reconstruction.ct_core import vff_io
 
 
 def parse_args():

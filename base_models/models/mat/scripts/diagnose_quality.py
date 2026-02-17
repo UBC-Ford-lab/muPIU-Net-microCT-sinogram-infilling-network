@@ -29,7 +29,7 @@ METRIC_CALC_DIR = CT_RECON_DIR / 'metric_calculators'
 sys.path.insert(0, str(CT_RECON_DIR))
 sys.path.insert(0, str(METRIC_CALC_DIR))
 
-from ct_core import vff_io as vff
+from reconstruction.ct_core import vff_io as vff
 
 # Output directory
 OUTPUT_DIR = SCRIPT_DIR.parent / 'metrics'

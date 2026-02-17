@@ -92,7 +92,7 @@ def get_NEQ(image_data_MTF, image_data_NPS, crop_indices_MTF, ROI_bounds_NPS, pi
 if __name__ == '__main__':
     # Load the image data
     sys.path.insert(1, os.path.join(sys.path[0], '..'))
-    from ct_core import vff_io as vff
+    from reconstruction.ct_core import vff_io as vff
     image_data = vff.read_vff("data/results/repaint_reconstruction.vff", verbose=False)[1]
 
     # select MTF slices

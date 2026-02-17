@@ -43,7 +43,7 @@ CT_RECON_DIR = Path(__file__).parent.parent.parent.parent.parent
 sys.path.append(str(CT_RECON_DIR))
 
 from reconstruction.fdk import FDKReconstructor
-from ct_core import tiff_converter
+from reconstruction.ct_core import tiff_converter
 
 
 def load_metadata(metadata_path, tiling_metadata_path=None):

@@ -6,8 +6,8 @@ All scripts should import paths from this module rather than using hardcoded pat
 
 from pathlib import Path
 
-# Project root directory (parent of ct_core/)
-PROJECT_ROOT = Path(__file__).parent.parent
+# Project root directory (this file is at the repo root)
+PROJECT_ROOT = Path(__file__).parent
 
 # Data directories
 DATA_DIR = PROJECT_ROOT / "data"

@@ -10,7 +10,7 @@ from metric_calculators import neq_calculator as NEQ_calculator
 from metric_calculators import mtf_calculator as MTF_calculator
 from metric_calculators import ttf_calculator as TTF_calculator
 from metric_calculators import d_prime_calculator
-from ct_core import vff_io as vff
+from reconstruction.ct_core import vff_io as vff
 
 if __name__ == '__main__':
     # Create the target directory

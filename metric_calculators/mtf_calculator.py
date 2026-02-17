@@ -244,7 +244,7 @@ def get_MTF(image_data, crop_indices, find_absolute_MTF=True, pixel_size=0.05,
 if __name__ == '__main__':
     # Load the image data
     sys.path.insert(1, os.path.join(sys.path[0], '..'))
-    from ct_core import vff_io as vff
+    from reconstruction.ct_core import vff_io as vff
     image_data = vff.read_vff("data/results/repaint_reconstruction.vff", verbose=False)[1]
 
     # select only the slices which contain the slanted edge test pattern

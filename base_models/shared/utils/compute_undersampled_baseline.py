@@ -43,7 +43,7 @@ from pathlib import Path
 script_dir = Path(__file__).resolve().parent
 project_root = script_dir.parent.parent.parent  # ct_recon/
 sys.path.insert(0, str(project_root))
-from ct_core import vff_io
+from reconstruction.ct_core import vff_io
 
 
 def natural_sort_key(text):

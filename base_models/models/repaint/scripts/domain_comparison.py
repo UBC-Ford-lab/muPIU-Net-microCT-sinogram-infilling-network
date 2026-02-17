@@ -33,7 +33,7 @@ import sys
 # Add ct_recon directory to path for imports (5 levels up from scripts/)
 CT_RECON_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
 sys.path.append(CT_RECON_DIR)
-from ct_core import vff_io
+from reconstruction.ct_core import vff_io
 
 
 def parse_args():

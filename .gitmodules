@@ -10,3 +10,6 @@
 [submodule "base_models/models/repaint/RePaint"]
 	path = base_models/models/repaint/RePaint
 	url = https://github.com/andreas128/RePaint
+[submodule "reconstruction"]
+	path = reconstruction
+	url = https://github.com/UBC-Ford-lab/eXplore_CT_120_fdk_reconstruction_algorithm.git

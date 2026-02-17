@@ -28,19 +28,19 @@ Download and place the model checkpoint into `data/models/` for inference.
 
 ```
 muPIU-Net/
-├── ct_core/                    # Core library package
-│   ├── vff_io.py               # VFF file I/O
-│   ├── calibration.py          # HU calibration
-│   ├── field_correction.py     # Bright/dark field correction
-│   └── paths.py                # Centralized path configuration
+├── paths.py                    # Centralized path configuration
+│
+├── reconstruction/             # FDK reconstruction (git submodule)
+│   ├── fdk.py                  # GPU-accelerated FDK
+│   ├── run_recon_on_vff_file.py # CLI reconstruction script
+│   └── ct_core/                # Core CT utilities
+│       ├── vff_io.py           # VFF file I/O
+│       ├── calibration.py      # HU calibration
+│       └── tiff_converter.py   # TIFF export
 │
 ├── unet_pipeline/              # U-Net inference pipeline
 │   ├── model.py                # U-Net architecture
-│   ├── infer.py                # Inference script
-│   └── run_all.py              # Full reconstruction pipeline
-│
-├── reconstruction/             # FDK reconstruction
-│   └── fdk.py                  # GPU-accelerated FDK
+│   └── infer.py                # Inference script
 │
 ├── metric_calculators/         # Image quality metrics
 │   ├── mtf_calculator.py       # Modulation Transfer Function
@@ -70,9 +70,12 @@ See [INSTALLATION.md](INSTALLATION.md) for detailed setup instructions.
 ### Quick Start
 
 ```bash
-# Clone with submodules
+# Clone with submodules (includes reconstruction package)
 git clone --recursive https://github.com/UBC-Ford-lab/muPIU-Net-microCT-sinogram-infilling-network.git
 cd muPIU-Net-microCT-sinogram-infilling-network
+
+# If you already cloned without --recursive, init submodules:
+# git submodule update --init --recursive
 
 # Create virtual environment
 python -m venv venv
@@ -83,7 +86,7 @@ source venv/bin/activate  # Linux/Mac
 pip install -r requirements.txt
 
 # Verify installation
-python -c "from ct_core import vff_io"
+python -c "from reconstruction.ct_core import vff_io"
 ```
 
 ## Usage
