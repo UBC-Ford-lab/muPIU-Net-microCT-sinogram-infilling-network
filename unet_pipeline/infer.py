@@ -20,8 +20,10 @@ import shutil
 import argparse
 import numpy as np
 import torch
+from datetime import datetime
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
+import xmltodict
 from reconstruction.ct_core import vff_io
 from unet_pipeline.model import UNet
 from reconstruction.ct_core.vff_io import write_vff
@@ -51,6 +53,17 @@ def parse_args():
     p.add_argument('--device', type=str,
                    default='cuda:0' if torch.cuda.is_available() else 'cpu')
     return p.parse_args()
+
+
+def write_updated_xml(original_xml, dst_path, scan_id, view_count, increment_angle):
+    """Write a modified scan.xml with updated metadata fields."""
+    doc = xmltodict.parse(original_xml)
+    doc['Series']['@scanID'] = scan_id
+    doc['Series']['Created'] = datetime.now().isoformat()
+    doc['Series']['SeriesParams']['ViewCount'] = str(view_count)
+    doc['Series']['SeriesParams']['IncrementAngle'] = str(increment_angle)
+    with open(dst_path, 'w') as f:
+        f.write(xmltodict.unparse(doc, pretty=True))
 
 
 def main():
@@ -86,12 +99,7 @@ def main():
     os.makedirs(with_pred_folder, exist_ok=True)
     os.makedirs(no_pred_folder, exist_ok=True)
 
-    # Copy scan.xml to both folders
     src_xml = scan_path / 'scan.xml'
-    for folder in (with_pred_folder, no_pred_folder):
-        dst_xml = os.path.join(folder, 'scan.xml')
-        if src_xml.exists() and not os.path.exists(dst_xml):
-            shutil.copy2(str(src_xml), dst_xml)
 
     # Build list of (left_idx, right_idx) pairs depending on mode
     if args.mode == 'interleave':
@@ -109,10 +117,36 @@ def main():
         print(f"Predicting {len(pairs)} missing projections (odd indices from even neighbors)")
         print(f"Output: {n_out_with} in _with_pred, {n_out_no} in _no_pred")
 
+    # Write updated scan.xml to both output folders
+    if src_xml.exists():
+        original_xml = src_xml.read_text()
+        doc = xmltodict.parse(original_xml)
+        orig_increment = float(doc['Series']['SeriesParams']['IncrementAngle'])
+
+        # Preserve total_angle = increment * count (as the reconstruction expects)
+        orig_total = orig_increment * N
+        if args.mode == 'interleave':
+            increment_with = orig_total / n_out_with  # (θ·N) / (2N−1)
+            increment_no = orig_increment              # unchanged
+        else:  # subsample
+            increment_with = orig_increment             # unchanged
+            increment_no = orig_total / n_out_no        # (θ·N) / ⌈N/2⌉
+
+        write_updated_xml(original_xml,
+                          os.path.join(with_pred_folder, 'scan.xml'),
+                          scan_id=scan_basename + '_with_pred',
+                          view_count=n_out_with,
+                          increment_angle=increment_with)
+        write_updated_xml(original_xml,
+                          os.path.join(no_pred_folder, 'scan.xml'),
+                          scan_id=scan_basename + '_no_pred',
+                          view_count=n_out_no,
+                          increment_angle=increment_no)
+
     # Load model
     device = torch.device(args.device)
     model = UNet(in_ch=2, out_ch=1).to(device)
-    state = torch.load(args.checkpoint, map_location=device)
+    state = torch.load(args.checkpoint, map_location=device, weights_only=True)
     model.load_state_dict(state)
     model.eval()
 
@@ -208,6 +242,13 @@ def main():
         # Copy originals (deduplicated) to both folders
         copy_original(left_path, left_seq_with, left_seq_no)
         copy_original(right_path, right_seq_with, right_seq_no)
+
+    # In subsample mode with even N, the last odd projection has no right neighbor
+    # and can't be predicted. Copy the original so _with_pred has all N projections.
+    if args.mode == 'subsample' and N % 2 == 0:
+        last_idx = N - 1  # odd index with no right neighbor
+        if last_idx not in written_with:
+            copy_original(vff_files[last_idx], last_idx, None)
 
     # Wait for all background writes to complete and propagate any exceptions
     executor.shutdown(wait=True)

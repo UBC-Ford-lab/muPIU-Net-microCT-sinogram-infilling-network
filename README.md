@@ -1,4 +1,4 @@
-# muPIU-Net: Micro-CT Projection Infilling U-Net
+# µPIU-Net: Micro-CT Projection Infilling U-Net
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18519787.svg)](https://doi.org/10.5281/zenodo.18519787)
@@ -9,7 +9,7 @@ A deep learning framework for projection infilling in micro-CT imaging - recover
 
 This repository contains the code for our paper on CT sinogram infilling using deep learning. The framework implements two main approaches:
 
-1. **muPIU-Net (U-Net)** - Custom U-Net architecture for direct projection interpolation in the sinogram domain
+1. **µPIU-Net** - Custom U-Net architecture for direct projection interpolation in the sinogram domain
 2. **Base Model Comparison** - Four state-of-the-art image inpainting models (LaMa, MAT, DeepFill v2, RePaint) adapted for CT sinogram inpainting
 
 Both approaches use FDK reconstruction for fair comparison, followed by quantitative image quality metrics (MTF, NPS, NEQ).
@@ -18,7 +18,7 @@ Both approaches use FDK reconstruction for fair comparison, followed by quantita
 
 ## Data & Trained Model Weights
 
-The trained muPIU-Net model weights and the evaluation dataset (mCTP 610 phantom) are publicly available on Zenodo:
+The trained µPIU-Net model weights and the evaluation dataset (mCTP 610 phantom) are publicly available on Zenodo:
 
 **[https://zenodo.org/records/18519787](https://zenodo.org/records/18519787)** (DOI: [10.5281/zenodo.18519787](https://doi.org/10.5281/zenodo.18519787))
 
@@ -27,7 +27,7 @@ Download and place the model checkpoint into `data/models/` for inference.
 ## Repository Structure
 
 ```
-muPIU-Net/
+µPIU-Net/
 ├── paths.py                    # Centralized path configuration
 │
 ├── reconstruction/             # FDK reconstruction (git submodule)
@@ -38,8 +38,8 @@ muPIU-Net/
 │       ├── calibration.py      # HU calibration
 │       └── tiff_converter.py   # TIFF export
 │
-├── unet_pipeline/              # U-Net inference pipeline
-│   ├── model.py                # U-Net architecture
+├── unet_pipeline/              # µPIU-Net inference pipeline
+│   ├── model.py                # µPIU-Net architecture
 │   ├── infer.py                # Inference script
 │   └── domain_comparison.py    # Multi-domain evaluation (SSIM/PSNR)
 │
@@ -104,9 +104,9 @@ Each scan folder should contain:
 - `dark.vff` — Dark field calibration
 - `scan.xml` — Scanner geometry (source/detector positions, spacing)
 
-### U-Net Infilling + Reconstruction
+### µPIU-Net Infilling + Reconstruction
 
-**Step 1 — Run U-Net inference** to predict missing projections:
+**Step 1 — Run µPIU-Net inference** to predict missing projections:
 
 ```bash
 python unet_pipeline/infer.py \
@@ -128,18 +128,29 @@ Two inference modes are available via `--mode`:
 # Ground truth (all original projections)
 python -m reconstruction.run_recon_on_vff_file data/scans/Scan_1681
 
-# U-Net infilled projections
+# µPIU-Net infilled projections
 python -m reconstruction.run_recon_on_vff_file data/results/Scan_1681_with_pred
 
 # Undersampled baseline (originals only, no infilling)
 python -m reconstruction.run_recon_on_vff_file data/results/Scan_1681_no_pred
 ```
 
-The reconstructor auto-detects the original scan folder (for calibration fields) from the `Scan_XXXX` naming convention. Override with `--scan-folder` if needed.
+The reconstructor auto-detects the original scan folder (for calibration fields) from the `Scan_XXXX` naming convention. Override with `--scan-folder` if needed. The total angular coverage is determined automatically from `scan.xml` (`IncrementAngle × ViewCount`); override with `--total-angle` if needed.
 
-**Output:** Calibrated HU volumes saved alongside the input folder as `{folder}_recon_calibrated.vff`.
+**Output:** Calibrated HU volumes saved alongside the input folder as `{folder}_recon.vff`.
 
-See `python -m reconstruction.run_recon_on_vff_file --help` for additional options (filter type, voxel size, FOV).
+**Optional: bilateral filter post-processing** — apply edge-preserving denoising after HU calibration:
+
+```bash
+python -m reconstruction.run_recon_on_vff_file data/results/Scan_1681_with_pred \
+    --bilateral-filter \
+    --bilateral-sigma-spatial 1.5 \
+    --bilateral-sigma-range 50.0
+```
+
+This applies a slice-by-slice bilateral filter (OpenCV) that reduces noise while preserving tissue boundaries. Output is saved as `{folder}_recon_bilateral.vff` to keep the unfiltered volume intact. The spatial sigma (mm) controls the smoothing neighbourhood and the range sigma (HU) controls the edge-preservation threshold.
+
+See `python -m reconstruction.run_recon_on_vff_file --help` for all options (filter type, voxel size, FOV, bilateral filter).
 
 ### Base Model Comparison
 
@@ -236,7 +247,7 @@ The `metric_calculators/` submodule provides CLI tools and a Python API for comp
 ```bash
 python base_models/models/deepfill/scripts/calculate_metrics.py \
   --gt_recon data/results/ground_truth_reconstruction.vff \
-  --unet_recon data/results/unet_reconstruction.vff
+  --unet_recon data/results/mupiunet_reconstruction.vff
 ```
 
 **Cross-model comparison plots:**
