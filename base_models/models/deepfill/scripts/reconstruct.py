@@ -38,6 +38,7 @@ sys.path.append(str(CT_RECON_DIR))
 
 from reconstruction.fdk import FDKReconstructor
 from reconstruction.ct_core import tiff_converter
+from reconstruction.ct_core.vff_io import write_vff
 
 
 def load_metadata(metadata_path, tiling_metadata_path=None):
@@ -379,11 +380,35 @@ def reconstruct_from_deepfill_output(
         print(f"This may take 5-10 minutes with GPU acceleration...")
         reconstructor.reconstruct(display_volume=False)
 
+        # Save reconstruction as VFF
+        vff_path = str(output_folder) + '.vff'
+        print(f"\nSaving reconstruction to VFF: {vff_path}")
+        vol = reconstructor.reconstructed_volume
+        vol_np = vol.cpu().numpy() if hasattr(vol, 'cpu') else np.array(vol, copy=False)
+
+        # Scale to int16 range for VFF storage
+        vol_min, vol_max = float(vol_np.min()), float(vol_np.max())
+        if vol_max > vol_min:
+            vol_int16 = ((vol_np - vol_min) / (vol_max - vol_min) * 64000 - 32000).astype(np.int16)
+        else:
+            vol_int16 = np.zeros(vol_np.shape, dtype=np.int16)
+
+        # VFF convention: (z, y, x) with y-flip (matching run_recon_on_vff_file.py)
+        vol_vff = vol_int16.transpose(2, 1, 0)[:, ::-1, :]
+        write_vff(vff_path, {
+            'bits': 16,
+            'spacing': f"{geometry['dx']} {geometry['dx']} {geometry['dz']}",
+        }, vol_vff)
+        print(f"  Shape: {vol_vff.shape} (z, y, x)")
+        print(f"  Original range: [{vol_min:.6f}, {vol_max:.6f}]")
+        print(f"  Scaled to int16: [-32000, 32000]")
+        del vol_int16, vol_vff
+
         end = time.time()
         print(f"\n{'='*70}")
         print(f"Reconstruction complete!")
         print(f"Time elapsed: {(end - start)/60:.2f} minutes")
-        print(f"Results saved to: {output_folder}")
+        print(f"VFF saved to: {vff_path}")
         print(f"{'='*70}")
 
         # Cleanup memmap files after successful completion
@@ -488,7 +513,7 @@ def main():
     print("\n" + "="*80)
     print("RECONSTRUCTION COMPLETE!")
     print("="*80)
-    print(f"DeepFill v2 reconstruction: {output_dir}.vff")
+    print(f"DeepFill v2 reconstruction VFF: {output_dir}.vff")
 
 if __name__ == '__main__':
     main()
