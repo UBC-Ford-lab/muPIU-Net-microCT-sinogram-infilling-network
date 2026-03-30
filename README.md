@@ -32,7 +32,7 @@ Download and place the model checkpoint into `data/models/` for inference.
 │
 ├── reconstruction/             # FDK reconstruction (git submodule)
 │   ├── fdk.py                  # GPU-accelerated FDK
-│   ├── run_recon_on_vff_file.py # CLI reconstruction script
+│   ├── run_fdk_recon.py         # CLI reconstruction script
 │   └── ct_core/                # Core CT utilities
 │       ├── vff_io.py           # VFF file I/O
 │       ├── calibration.py      # HU calibration
@@ -87,8 +87,8 @@ python -m venv venv
 source venv/bin/activate  # Linux/Mac
 # or: venv\Scripts\activate  # Windows
 
-# Install dependencies
-pip install -r requirements.txt
+# Install package and dependencies
+pip install -e .
 
 # Verify installation
 python -c "from reconstruction.ct_core import vff_io; from metric_calculators import mtf_calculator; print('OK')"
@@ -126,13 +126,13 @@ Two inference modes are available via `--mode`:
 
 ```bash
 # Ground truth (all original projections)
-python -m reconstruction.run_recon_on_vff_file data/scans/Scan_1681
+python -m reconstruction.run_fdk_recon data/scans/Scan_1681
 
 # µPIU-Net infilled projections
-python -m reconstruction.run_recon_on_vff_file data/results/Scan_1681_with_pred
+python -m reconstruction.run_fdk_recon data/results/Scan_1681_with_pred
 
 # Undersampled baseline (originals only, no infilling)
-python -m reconstruction.run_recon_on_vff_file data/results/Scan_1681_no_pred
+python -m reconstruction.run_fdk_recon data/results/Scan_1681_no_pred
 ```
 
 The reconstructor auto-detects the original scan folder (for calibration fields) from the `Scan_XXXX` naming convention. Override with `--scan-folder` if needed. The total angular coverage is determined automatically from `scan.xml` (`IncrementAngle × ViewCount`); override with `--total-angle` if needed.
@@ -142,7 +142,7 @@ The reconstructor auto-detects the original scan folder (for calibration fields)
 **Optional: bilateral filter post-processing** — apply edge-preserving denoising after HU calibration:
 
 ```bash
-python -m reconstruction.run_recon_on_vff_file data/results/Scan_1681_with_pred \
+python -m reconstruction.run_fdk_recon data/results/Scan_1681_with_pred \
     --bilateral-filter \
     --bilateral-sigma-spatial 1.5 \
     --bilateral-sigma-range 50.0
@@ -150,7 +150,7 @@ python -m reconstruction.run_recon_on_vff_file data/results/Scan_1681_with_pred 
 
 This applies a slice-by-slice bilateral filter (OpenCV) that reduces noise while preserving tissue boundaries. Output is saved as `{folder}_recon_bilateral.vff` to keep the unfiltered volume intact. The spatial sigma (mm) controls the smoothing neighbourhood and the range sigma (HU) controls the edge-preservation threshold.
 
-See `python -m reconstruction.run_recon_on_vff_file --help` for all options (filter type, voxel size, FOV, bilateral filter).
+See `python -m reconstruction.run_fdk_recon --help` for all options (filter type, voxel size, FOV, bilateral filter).
 
 ### Base Model Comparison
 

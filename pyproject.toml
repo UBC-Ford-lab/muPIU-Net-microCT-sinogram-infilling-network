@@ -6,6 +6,23 @@ build-backend = "setuptools.build_meta"
 name = "mupiu-net"
 version = "0.1.0"
 requires-python = ">=3.8"
+dependencies = [
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "torch",
+    "torchmetrics",
+    "tqdm",
+    "Pillow",
+    "opencv-python",
+    "xmltodict",
+    "imageio",
+    "photutils",
+]
+
+[project.optional-dependencies]
+tigre = ["pytigre"]
+astra = ["astra-toolbox"]
 
 [tool.setuptools.packages.find]
 include = ["unet_pipeline*", "metric_calculators*", "reconstruction*"]

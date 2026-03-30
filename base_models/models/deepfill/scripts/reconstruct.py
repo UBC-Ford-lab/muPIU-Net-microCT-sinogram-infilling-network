@@ -393,7 +393,7 @@ def reconstruct_from_deepfill_output(
         else:
             vol_int16 = np.zeros(vol_np.shape, dtype=np.int16)
 
-        # VFF convention: (z, y, x) with y-flip (matching run_recon_on_vff_file.py)
+        # VFF convention: (z, y, x) with y-flip (matching run_fdk_recon.py)
         vol_vff = vol_int16.transpose(2, 1, 0)[:, ::-1, :]
         write_vff(vff_path, {
             'bits': 16,
